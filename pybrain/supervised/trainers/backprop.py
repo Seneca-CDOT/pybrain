@@ -10,10 +10,24 @@ from pybrain.utilities import fListToString
 from pybrain.auxiliary import GradientDescent
 
 
+class ErrorInjection:
+
+    def __init__(self):
+        self.error = -1
+        
+    def getError(self):
+        return self.error
+        
+    def setError(self, e):
+        self.error = e
+
+
 class BackpropTrainer(Trainer):
     """Trainer that trains the parameters of a module according to a
     supervised dataset (potentially sequential) by backpropagating the errors
     (through time)."""
+
+    customError = ErrorInjection()
 
     def __init__(self, module, dataset=None, learningrate=0.01, lrdecay=1.0,
                  momentum=0., verbose=False, batchlearning=False,
@@ -76,7 +90,6 @@ class BackpropTrainer(Trainer):
         self.totalepochs += 1
         return errors / ponderation
 
-
     def _calcDerivs(self, seq):
         """Calculate error function and backpropagate output errors to yield
         the gradient."""
@@ -92,11 +105,17 @@ class BackpropTrainer(Trainer):
             outerr = target - self.module.outputbuffer[offset]
             if len(sample) > 2:
                 importance = sample[2]
-                error += 0.5 * dot(importance, outerr ** 2)
+                if (self.customError.getError() == -1):
+                    error += 0.5 * dot(importance, outerr ** 2)
+                else:
+                    error = self.customError.getError()
                 ponderation += sum(importance)
                 self.module.backActivate(outerr * importance)
             else:
-                error += 0.5 * sum(outerr ** 2)
+                if (self.customError.getError() == -1):
+                    error += 0.5 * sum(outerr ** 2)
+                else:
+                    error = self.customError.getError()
                 ponderation += len(target)
                 # FIXME: the next line keeps arac from producing NaNs. I don't
                 # know why that is, but somehow the __str__ method of the
