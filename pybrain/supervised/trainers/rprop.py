@@ -40,6 +40,8 @@ class RPropMinusTrainer(BackpropTrainer):
         self.module.resetDerivatives()
         errors = 0
         ponderation = 0
+        if (self.customError.getError() != -1):
+            ponderation = 1
         for seq in self.ds._provideSequences():
             e, p = self._calcDerivs(seq)
             errors += e

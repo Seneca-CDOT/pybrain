@@ -67,6 +67,8 @@ class BackpropTrainer(Trainer):
         self.module.resetDerivatives()
         errors = 0
         ponderation = 0.
+        if (self.customError.getError() != -1):
+            ponderation = 1.
         shuffledSequences = []
         for seq in self.ds._provideSequences():
             shuffledSequences.append(seq)
@@ -98,6 +100,8 @@ class BackpropTrainer(Trainer):
             self.module.activate(sample[0])
         error = 0
         ponderation = 0.
+        if (self.customError.getError() != -1):
+            ponderation = 1.
         for offset, sample in reversed(list(enumerate(seq))):
             # need to make a distinction here between datasets containing
             # importance, and others
@@ -169,11 +173,16 @@ class BackpropTrainer(Trainer):
             e, i = dataset._evaluateSequence(self.module.activate, seq, verbose)
             importances.append(i)
             errors.append(e)
-            ponderatedErrors.append(e / i)
+            if (self.customError.getError() == -1):
+                ponderatedErrors.append(e / i)
+            else:
+                ponderatedErrors.append(e)
         if verbose:
             print(('All errors:', ponderatedErrors))
-        assert sum(importances) > 0
-        avgErr = sum(errors) / sum(importances)
+        avgErr = sum(errors)
+        if (self.customError.getError() == -1):
+            assert sum(importances) > 0
+            avgErr = sum(errors) / sum(importances)
         if verbose:
             print(('Average error:', avgErr))
             print(('Max error:', max(ponderatedErrors), 'Median error:',
