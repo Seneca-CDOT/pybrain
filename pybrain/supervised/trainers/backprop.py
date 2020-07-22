@@ -14,6 +14,7 @@ class ErrorInjection:
 
     def __init__(self):
         self.error = -1
+        self.outerr = []
         
     def getError(self):
         return self.error
@@ -21,6 +22,11 @@ class ErrorInjection:
     def setError(self, e):
         self.error = e
 
+    def getOuterr(self):
+        return self.outerr
+
+    def setOuterr(self, e):
+        self.outerr = e
 
 class BackpropTrainer(Trainer):
     """Trainer that trains the parameters of a module according to a
@@ -102,30 +108,36 @@ class BackpropTrainer(Trainer):
         ponderation = 0.
         if (self.customError.getError() != -1):
             ponderation = 1.
-        for offset, sample in reversed(list(enumerate(seq))):
-            # need to make a distinction here between datasets containing
-            # importance, and others
-            target = sample[1]
-            outerr = target - self.module.outputbuffer[offset]
-            if len(sample) > 2:
-                importance = sample[2]
-                if (self.customError.getError() == -1):
-                    error += 0.5 * dot(importance, outerr ** 2)
+        if (self.customError.getOuterr() != []):
+            outerr = self.customError.getOuterr()
+            str(outerr)
+            self.module.backActivate(outerr)
+            error += 0.5 * sum(outerr ** 2)
+        else:
+            for offset, sample in reversed(list(enumerate(seq))):
+                # need to make a distinction here between datasets containing
+                # importance, and others
+                target = sample[1]
+                outerr = target - self.module.outputbuffer[offset]
+                if len(sample) > 2:
+                    importance = sample[2]
+                    if (self.customError.getError() == -1):
+                        error += 0.5 * dot(importance, outerr ** 2)
+                    else:
+                        error = self.customError.getError()
+                    ponderation += sum(importance)
+                    self.module.backActivate(outerr * importance)
                 else:
-                    error = self.customError.getError()
-                ponderation += sum(importance)
-                self.module.backActivate(outerr * importance)
-            else:
-                if (self.customError.getError() == -1):
-                    error += 0.5 * sum(outerr ** 2)
-                else:
-                    error = self.customError.getError()
-                ponderation += len(target)
-                # FIXME: the next line keeps arac from producing NaNs. I don't
-                # know why that is, but somehow the __str__ method of the
-                # ndarray class fixes something,
-                str(outerr)
-                self.module.backActivate(outerr)
+                    if (self.customError.getError() == -1):
+                        error += 0.5 * sum(outerr ** 2)
+                    else:
+                        error = self.customError.getError()
+                    ponderation += len(target)
+                    # FIXME: the next line keeps arac from producing NaNs. I don't
+                    # know why that is, but somehow the __str__ method of the
+                    # ndarray class fixes something,
+                    str(outerr)
+                    self.module.backActivate(outerr)
 
         return error, ponderation
 
